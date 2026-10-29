@@ -66,9 +66,9 @@ export function Van({ x, door }: { x: Num; door: Num }) {
   );
 }
 
-/** Patrulla. Mira a la derecha. Las luces alternan rojo y azul. */
-export function PoliceCar({ clock, x }: { clock: Num; x: Num }) {
-  const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: 858 }]);
+/** Patrulla. Mira a la derecha (o a la izquierda con `flip`). Las luces alternan rojo y azul. */
+export function PoliceCar({ clock, x, y = 858, scale = 1, flip = false }: { clock: Num; x: Num; y?: number; scale?: number; flip?: boolean }) {
+  const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scaleX: flip ? -scale : scale }, { scaleY: scale }]);
   const red = useDerivedValue(() => (Math.floor(clock.value * 6) % 2 === 0 ? 1 : 0.15));
   const blue = useDerivedValue(() => 1.15 - red.value);
   return (
@@ -133,6 +133,52 @@ export function Drone({ clock, x, y, spot }: { clock: Num; x: Num; y: Num; spot:
       <Circle cx={0} cy={12} r={6} color="#0B1631" />
       <Circle cx={-18} cy={0} r={2.5} color="#E11D2A" />
       <Circle cx={18} cy={0} r={2.5} color="#22C55E" />
+    </Group>
+  );
+}
+
+/** Moto de policía con su conductor. Mira a la derecha (o a la izquierda con `flip`). Origen en el piso. */
+export function Motorcycle({ clock, x, y, scale = 1, flip = false }: { clock: Num; x: Num; y: number; scale?: number; flip?: boolean }) {
+  const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scaleX: flip ? -scale : scale }, { scaleY: scale }]);
+  const red = useDerivedValue(() => (Math.floor(clock.value * 7) % 2 === 0 ? 1 : 0.15));
+  const blue = useDerivedValue(() => 1.15 - red.value);
+  return (
+    <Group transform={tr}>
+      <Oval x={-70} y={-6} width={140} height={14} color="rgba(0,0,0,0.35)">
+        <BlurMask blur={6} style="normal" />
+      </Oval>
+      <Circle cx={-42} cy={-22} r={22} color="#07090D" />
+      <Circle cx={-42} cy={-22} r={9} color="#5A6070" />
+      <Circle cx={44} cy={-22} r={22} color="#07090D" />
+      <Circle cx={44} cy={-22} r={9} color="#5A6070" />
+      <Path path="M44 -22L32 -72" style="stroke" strokeWidth={5} strokeCap="round" color="#2A2F3A" />
+      <Path path="M-56 -40L-24 -60H18L36 -66L58 -46L44 -32H-38Z" color="#EEF2F8" />
+      <Path path="M-48 -44H40" style="stroke" strokeWidth={5} color="#1D3F8F" />
+      <RoundedRect x={-34} y={-68} width={40} height={9} r={4} color="#14181F" />
+      <Path path="M30 -70L40 -98L47 -96L40 -66Z" color="rgba(170,200,255,0.6)" />
+      <Circle cx={58} cy={-50} r={14} color="rgba(255,231,166,0.75)">
+        <BlurMask blur={9} style="normal" />
+      </Circle>
+      {/* Conductor */}
+      <Path path="M-6 -64L14 -36L18 -24" style="stroke" strokeWidth={9} strokeCap="round" strokeJoin="round" color="#14213F" />
+      <RoundedRect x={-16} y={-114} width={26} height={52} r={9} color="#1E3A7A" />
+      <Path path="M2 -102L32 -74" style="stroke" strokeWidth={7} strokeCap="round" color="#1E3A7A" />
+      <RoundedRect x={-8} y={-106} width={14} height={6} r={2} color="#E0B341" />
+      <Circle cx={-2} cy={-126} r={14} color="#F4F6FA" />
+      <RoundedRect x={0} y={-131} width={14} height={8} r={3} color="#14233F" />
+      {/* Sirena */}
+      <Path path="M-44 -58V-94" style="stroke" strokeWidth={3} color="#9AA6B8" />
+      <Group opacity={red}>
+        <Circle cx={-44} cy={-98} r={18} color="rgba(225,29,42,0.7)">
+          <BlurMask blur={12} style="normal" />
+        </Circle>
+        <Circle cx={-44} cy={-98} r={5} color="#FF3B47" />
+      </Group>
+      <Group opacity={blue}>
+        <Circle cx={-44} cy={-98} r={18} color="rgba(59,130,246,0.7)">
+          <BlurMask blur={12} style="normal" />
+        </Circle>
+      </Group>
     </Group>
   );
 }

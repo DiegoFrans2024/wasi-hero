@@ -12,7 +12,8 @@ import { Figtree_400Regular, Figtree_600SemiBold, Figtree_700Bold } from '@expo-
 import { StoryCanvas, type Cam } from './StoryCanvas';
 import { Hud } from './Hud';
 import { Outro } from './Outro';
-import { camAt, END, HAPTICS, type HapticKind, OUTRO, shakeAt, stageEnd, stageIndex, STAGES } from './timeline';
+import { camAt, END, HAPTICS, type HapticKind, OUTRO, shakeAt, stageEnd, stageIndex, type Stage } from './timeline';
+import { NEXT_STORY_DELAY, STORIES } from './stories';
 import { prog } from './math';
 import { C, FONT } from './theme';
 
@@ -25,6 +26,19 @@ type Props = {
   onAppStore?: () => void;
   onGooglePlay?: () => void;
 };
+
+/** Modo revisión (solo web): ?h=2 elige la historia y ?t=9.9 la congela en ese segundo. */
+function reviewParams() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return { story: 0, frozen: null };
+  const q = new URLSearchParams(window.location.search);
+  const h = Number(q.get('h'));
+  const t = Number(q.get('t'));
+  return {
+    story: Number.isInteger(h) && h >= 1 && h <= STORIES.length ? h - 1 : 0,
+    frozen: Number.isFinite(t) && t > 0 ? Math.min(t, END) : null,
+  };
+}
+const REVIEW = reviewParams();
 
 function vibrate(kind: HapticKind) {
   if (Platform.OS === 'web') return;
@@ -41,18 +55,23 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
   const reduceMotion = useReducedMotion();
 
   const clock = useSharedValue(0);
+  const [storyIdx, setStoryIdx] = useState(REVIEW.story);
   const [stage, setStage] = useState(0);
   const [ended, setEnded] = useState(false);
+  const [nextIn, setNextIn] = useState(NEXT_STORY_DELAY);
+  const story = STORIES[storyIdx];
+  const hasNext = storyIdx < STORIES.length - 1;
+  const kf = story.kf;
 
   // Cámara: encuadre por momento de la historia + sacudón
   const cam = useDerivedValue<Cam>(() => {
-    const c = camAt(clock.value);
+    const c = camAt(clock.value, kf);
     const sh = shakeAt(clock.value);
     const s = Math.max(W / 1600, H / 1250) * c.z * (landscape ? 1 : 0.88);
     const fx = landscape ? W * 0.6 : W * 0.5;
     const fy = landscape ? H * 0.46 : H * 0.38;
     return { s, tx: fx - c.x * s + sh.x, ty: fy - c.y * s + sh.y };
-  }, [W, H, landscape]);
+  }, [W, H, landscape, kf]);
 
   const play = useCallback((from: number) => {
     cancelAnimation(clock);
@@ -65,14 +84,18 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
     clock.value = END;
   }, [clock]);
 
+  const goToStory = useCallback((i: number) => {
+    cancelAnimation(clock);
+    clock.value = 0;
+    setNextIn(NEXT_STORY_DELAY);
+    setStoryIdx(i);
+  }, [clock]);
+
+  // Arranca cada historia al montarse o al cambiar de historia
   useEffect(() => {
-    // Modo revisión (solo web): ?t=9.9 congela la historia en ese segundo
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const frozen = Number(new URLSearchParams(window.location.search).get('t'));
-      if (Number.isFinite(frozen) && frozen > 0) {
-        clock.value = Math.min(frozen, END);
-        return;
-      }
+    if (REVIEW.frozen !== null) {
+      clock.value = REVIEW.frozen;
+      return;
     }
     if (reduceMotion) {
       jumpToEnd();
@@ -80,7 +103,19 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
     }
     const id = setTimeout(() => play(0), 400);
     return () => clearTimeout(id);
-  }, [reduceMotion, play, jumpToEnd, clock]);
+  }, [storyIdx, reduceMotion, play, jumpToEnd, clock]);
+
+  // Al terminar, el cierre queda en ÚNETE unos segundos y luego empieza la siguiente historia
+  useEffect(() => {
+    if (!ended || !hasNext || REVIEW.frozen !== null) return;
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      const left = NEXT_STORY_DELAY - Math.floor((Date.now() - startedAt) / 1000);
+      if (left <= 0) goToStory(storyIdx + 1);
+      else setNextIn(left);
+    }, 250);
+    return () => clearInterval(id);
+  }, [ended, hasNext, storyIdx, goToStory]);
 
   // Sincroniza textos y vibraciones con el reloj de la animación
   useAnimatedReaction(
@@ -98,16 +133,17 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
     },
   );
 
-  const s = STAGES[stage];
-  const outro = stage === STAGES.length - 1;
+  const stages = story.stages;
+  const s = stages[stage];
+  const outro = stage === stages.length - 1;
   const chyronTop = landscape ? 84 : 76;
   // El logo pequeño se va cuando entra el WASI grande del cierre
   const navStyle = useAnimatedStyle(() => ({ opacity: 1 - prog(clock.value, OUTRO.together - 0.3, OUTRO.together) }));
 
   return (
     <View style={styles.root}>
-      <StoryCanvas clock={clock} cam={cam} W={W} H={H} />
-      <Hud clock={clock} cam={cam} top={chyronTop} landscape={landscape} />
+      <StoryCanvas clock={clock} cam={cam} W={W} H={H} story={story} />
+      <Hud clock={clock} cam={cam} top={chyronTop} landscape={landscape} labels={story.labels} cuts={story.cuts} />
 
       <Animated.View style={[styles.nav, navStyle]} pointerEvents="none">
         <Text style={styles.logo}>WASI</Text>
@@ -115,7 +151,7 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
       </Animated.View>
 
       <View style={[styles.captionBox, landscape ? styles.captionLand : styles.captionPort]} pointerEvents="box-none">
-        {!outro && <Animated.View key={stage} entering={FadeInDown.duration(600)} exiting={FadeOut.duration(250)}>
+        {!outro && <Animated.View key={`${storyIdx}-${stage}`} entering={FadeInDown.duration(600)} exiting={FadeOut.duration(250)}>
           <View style={styles.clockRow}>
             <View style={[styles.clockDot, { backgroundColor: s.color }]} />
             <Text style={[styles.clock, { color: s.color }]}>{s.clock}</Text>
@@ -131,17 +167,23 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
       />
 
       <View style={[styles.timeline, landscape && styles.timelineLand]}>
-        <View style={styles.segs}>
-          {STAGES.map((st, i) => (
-            <Segment key={st.label} i={i} active={i === stage} clock={clock} onPress={() => play(st.start)} />
-          ))}
+        <View style={styles.segsBox}>
+          <Text style={styles.storyTitle}>
+            Historia {storyIdx + 1} de {STORIES.length} · {story.title}
+            {ended && hasNext ? `   ·   Historia ${storyIdx + 2} en ${nextIn} s` : ''}
+          </Text>
+          <View style={styles.segs}>
+            {stages.map((st, i) => (
+              <Segment key={st.label} stage={st} i={i} active={i === stage} clock={clock} onPress={() => play(st.start)} />
+            ))}
+          </View>
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => (ended ? play(0) : jumpToEnd())}
+          onPress={() => (!ended ? jumpToEnd() : goToStory(hasNext ? storyIdx + 1 : 0))}
           style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
         >
-          <Text style={styles.skipText}>{ended ? 'Ver de nuevo' : 'Saltar'}</Text>
+          <Text style={styles.skipText}>{!ended ? 'Saltar' : hasNext ? `Ver historia ${storyIdx + 2}` : 'Ver de nuevo'}</Text>
         </Pressable>
       </View>
       <Text style={styles.disclaimer}>Recreación ilustrativa</Text>
@@ -149,8 +191,9 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
   );
 }
 
-function Segment({ i, active, clock, onPress }: { i: number; active: boolean; clock: import('react-native-reanimated').SharedValue<number>; onPress: () => void }) {
-  const st = STAGES[i];
+type SegmentProps = { stage: Stage; i: number; active: boolean; clock: import('react-native-reanimated').SharedValue<number>; onPress: () => void };
+
+function Segment({ stage: st, i, active, clock, onPress }: SegmentProps) {
   const end = stageEnd(i);
   const fill = useAnimatedStyle(() => ({ width: `${prog(clock.value, st.start, end) * 100}%` }));
   return (
@@ -180,7 +223,9 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   timeline: { position: 'absolute', left: 20, right: 20, bottom: 34, flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   timelineLand: { left: '5%', right: '5%' },
-  segs: { flex: 1, flexDirection: 'row', gap: 6, maxWidth: 640 },
+  segsBox: { flex: 1, maxWidth: 640 },
+  storyTitle: { color: '#9FB0CC', fontFamily: FONT.semi, fontSize: 11, letterSpacing: 0.3, marginBottom: 4 },
+  segs: { flexDirection: 'row', gap: 6 },
   seg: { flex: 1, paddingVertical: 6 },
   bar: { height: 4, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden', marginBottom: 7 },
   barFill: { height: '100%', borderRadius: 4 },

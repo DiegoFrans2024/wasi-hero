@@ -3,18 +3,17 @@ import { StyleSheet } from 'react-native';
 import { Canvas, FractalNoise, Group, LinearGradient, Path, RadialGradient, Rect, Skia, vec } from '@shopify/react-native-skia';
 import type { Transforms3d } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
-import { Street } from './Street';
-import { Interiors } from './Interiors';
 import { city } from './city';
 import { cutFlash, streetVisible } from './timeline';
 import { prog, win } from './math';
 import { C } from './theme';
+import type { StoryDef } from './stories';
 
 export type Cam = { s: number; tx: number; ty: number };
 type Num = SharedValue<number>;
 
 /** Efectos en coordenadas de pantalla: lluvia, alarma, sirenas, viñeta, grano. */
-function ScreenFx({ clock, W, H }: { clock: Num; W: number; H: number }) {
+function ScreenFx({ clock, W, H, rain: raining }: { clock: Num; W: number; H: number; rain: boolean }) {
   const portrait = H > W;
   const rain = useDerivedValue(() => {
     const t = clock.value;
@@ -42,7 +41,7 @@ function ScreenFx({ clock, W, H }: { clock: Num; W: number; H: number }) {
 
   return (
     <>
-      <Path path={rain} style="stroke" strokeWidth={1.2} color="rgba(190,210,255,0.38)" opacity={rainOp} />
+      {raining && <Path path={rain} style="stroke" strokeWidth={1.2} color="rgba(190,210,255,0.38)" opacity={rainOp} />}
       <Rect x={0} y={0} width={W} height={H} opacity={alarm}>
         <RadialGradient c={vec(W / 2, H * 0.42)} r={R * 0.75} colors={['rgba(225,29,42,0)', 'rgba(225,29,42,0.75)']} positions={[0.35, 1]} />
       </Rect>
@@ -74,7 +73,10 @@ function ScreenFx({ clock, W, H }: { clock: Num; W: number; H: number }) {
   );
 }
 
-export function StoryCanvas({ clock, cam, W, H }: { clock: Num; cam: SharedValue<Cam>; W: number; H: number }) {
+type Props = { clock: Num; cam: SharedValue<Cam>; W: number; H: number; story: StoryDef };
+
+export function StoryCanvas({ clock, cam, W, H, story }: Props) {
+  const { Scene, Interiors } = story;
   const sceneTr = useDerivedValue<Transforms3d>(() => [
     { translateX: cam.value.tx },
     { translateY: cam.value.ty },
@@ -83,10 +85,10 @@ export function StoryCanvas({ clock, cam, W, H }: { clock: Num; cam: SharedValue
   return (
     <Canvas style={StyleSheet.absoluteFill}>
       <Group transform={sceneTr}>
-        <Street clock={clock} />
+        <Scene clock={clock} />
       </Group>
       <Interiors clock={clock} W={W} H={H} />
-      <ScreenFx clock={clock} W={W} H={H} />
+      <ScreenFx clock={clock} W={W} H={H} rain={story.rain} />
     </Canvas>
   );
 }

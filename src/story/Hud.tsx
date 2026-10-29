@@ -1,26 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
-import { ALERT_LIST_END, CUTS, END, streetVisible } from './timeline';
+import { ALERT_LIST_END, type Cut, type Label as LabelItem, streetVisible } from './timeline';
 import { prog, win } from './math';
 import { C, FONT } from './theme';
 import type { Cam } from './StoryCanvas';
 
 type Num = SharedValue<number>;
-type Kind = 'tag' | 'danger' | 'ok';
-
-/** Etiquetas de la IA, ancladas a puntos de la escena y con tamaño de texto fijo. */
-const LABELS: { text: string; x: number; y: number; a: number; b: number; kind: Kind }[] = [
-  { text: 'Cámara IP', x: 830, y: 500, a: 6.6, b: 12.2, kind: 'tag' },
-  { text: 'Celular reciclado', x: 1212, y: 555, a: 7.0, b: 12.2, kind: 'tag' },
-  { text: 'Dron', x: 1110, y: 236, a: 9.0, b: 12.2, kind: 'tag' },
-  { text: 'Arma detectada · 94%', x: 1236, y: 778, a: 7.7, b: 22.8, kind: 'danger' },
-  { text: 'Susto detectado · 96%', x: 956, y: 626, a: 9.8, b: 12.15, kind: 'danger' },
-  { text: 'Alerta enviada', x: 956, y: 626, a: 12.15, b: 20, kind: 'danger' },
-  { text: 'A salvo', x: 1030, y: 626, a: 28.2, b: END + 5, kind: 'ok' },
-];
-
-function Label({ clock, cam, item }: { clock: Num; cam: SharedValue<Cam>; item: (typeof LABELS)[number] }) {
+/** Etiqueta de la IA, anclada a un punto de la escena y con tamaño de texto fijo. */
+function Label({ clock, cam, item }: { clock: Num; cam: SharedValue<Cam>; item: LabelItem }) {
   const style = useAnimatedStyle(() => {
     const t = clock.value;
     const o = win(t, item.a, item.b, 0.25) * streetVisible(t);
@@ -43,9 +31,9 @@ function Label({ clock, cam, item }: { clock: Num; cam: SharedValue<Cam>; item: 
 }
 
 /** Rótulo de cada corte: quién está recibiendo la alerta. Se suma a la lista y no se borra. */
-function Chyron({ clock, i }: { clock: Num; i: number }) {
-  const cut = CUTS[i];
-  const next = i < CUTS.length - 1 ? CUTS[i + 1].start : ALERT_LIST_END;
+function Chyron({ clock, cuts, i }: { clock: Num; cuts: Cut[]; i: number }) {
+  const cut = cuts[i];
+  const next = i < cuts.length - 1 ? cuts[i + 1].start : ALERT_LIST_END;
   const box = useAnimatedStyle(() => {
     const t = clock.value;
     const o = prog(t, cut.start, cut.start + 0.25) * (1 - prog(t, ALERT_LIST_END - 0.4, ALERT_LIST_END));
@@ -66,15 +54,17 @@ function Chyron({ clock, i }: { clock: Num; i: number }) {
   );
 }
 
-export function Hud({ clock, cam, top, landscape }: { clock: Num; cam: SharedValue<Cam>; top: number; landscape: boolean }) {
+type HudProps = { clock: Num; cam: SharedValue<Cam>; top: number; landscape: boolean; labels: LabelItem[]; cuts: Cut[] };
+
+export function Hud({ clock, cam, top, landscape, labels, cuts }: HudProps) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {LABELS.map((l) => (
+      {labels.map((l) => (
         <Label key={l.text} clock={clock} cam={cam} item={l} />
       ))}
       <View style={[styles.chyrons, landscape ? styles.chyronsLand : styles.chyronsPort, { top }]}>
-        {CUTS.map((_, i) => (
-          <Chyron key={i} clock={clock} i={i} />
+        {cuts.map((_, i) => (
+          <Chyron key={i} clock={clock} cuts={cuts} i={i} />
         ))}
       </View>
     </View>

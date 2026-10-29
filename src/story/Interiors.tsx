@@ -12,7 +12,7 @@ type Num = SharedValue<number>;
 type Frame = { W: number; H: number };
 
 /** Cámara de cada interior: un lento acercamiento entre dos encuadres. */
-function useInteriorCam(clock: Num, i: number, { W, H }: Frame, from: number[], to: number[]) {
+export function useInteriorCam(clock: Num, i: number, { W, H }: Frame, from: number[], to: number[]) {
   const start = CUTS[i].start;
   const dur = CUTS[i].end - start;
   return useDerivedValue<Transforms3d>(() => {

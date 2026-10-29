@@ -19,6 +19,7 @@ export type Look = {
   hairColor?: string;
   stripes?: boolean;
   officer?: boolean;
+  tie?: boolean; // uniforme escolar
 };
 
 /** Emociones de un rostro. Cada una va de 0 a 1 y se pueden mezclar. */
@@ -191,17 +192,19 @@ type AdultProps = {
   opacity?: Num | number;
   mood?: Mood;
   seed?: number;
+  point?: Num;   // 0..1, levanta solo el brazo derecho (amenazar, agarrar)
+  holding?: 'knife' | 'gun';
 };
 
 /** Persona adulta en silueta ilustrada. Origen en los pies. */
-export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opacity = 1, mood, seed = 0 }: AdultProps) {
+export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opacity = 1, mood, seed = 0, point, holding }: AdultProps) {
   const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scale }]);
   const swing = useDerivedValue(() => (walk ? walk.value : 0) * Math.sin(clock.value * 15) * 0.55);
   const legA = useDerivedValue<Transforms3d>(() => [{ rotate: swing.value }]);
   const legB = useDerivedValue<Transforms3d>(() => [{ rotate: -swing.value }]);
   const up = useDerivedValue(() => (armsUp ? armsUp.value : 0) * (Math.PI - 0.3));
   const armL = useDerivedValue<Transforms3d>(() => [{ rotate: up.value - swing.value * 0.7 }]);
-  const armR = useDerivedValue<Transforms3d>(() => [{ rotate: -up.value + swing.value * 0.7 }]);
+  const armR = useDerivedValue<Transforms3d>(() => [{ rotate: -up.value - (point ? point.value : 0) * 1.35 + swing.value * 0.7 }]);
   const glow = useDerivedValue(() => (phone ? phone.value : 0));
 
   const legBack = shade(look.legs);
@@ -225,6 +228,12 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
       {look.stripes && (
         <Path path="M-17 -102H17M-17 -86H17M-17 -70H17" style="stroke" strokeWidth={3} color="#7FA6D3" />
       )}
+      {look.tie && (
+        <>
+          <Path path="M-7 -134L0 -124L7 -134Z" color="#F4F6FA" />
+          <Path path="M-2.5 -126H2.5L4 -104L0 -99L-4 -104Z" color="#C8202C" />
+        </>
+      )}
       {look.officer && (
         <>
           <RoundedRect x={-17} y={-80} width={34} height={5} r={1} color="#0F1A33" />
@@ -236,6 +245,20 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
       </Group>
       <Group origin={vec(20, -124)} transform={armR}>
         <RoundedRect x={17} y={-124} width={7} height={46} r={3.5} color={look.body} />
+        {holding === 'knife' && (
+          <>
+            <RoundedRect x={17} y={-84} width={7} height={11} r={2} color="#2A1D16" />
+            <Path path="M17.5 -73H23.5L21.5 -46L20.5 -44Z" color="#DDE3EC" />
+            <Path path="M20.5 -73V-47" style="stroke" strokeWidth={0.8} color="#9AA6B8" />
+          </>
+        )}
+        {holding === 'gun' && (
+          <>
+            <RoundedRect x={16.5} y={-82} width={8} height={26} r={1.5} color="#0B0D12" />
+            <RoundedRect x={16.5} y={-82} width={8} height={26} r={1.5} color="#B4BDCE" style="stroke" strokeWidth={1.1} />
+            <RoundedRect x={24} y={-82} width={10} height={7} r={1.5} color="#0B0D12" />
+          </>
+        )}
         {phone && (
           <Group opacity={glow}>
             <Circle cx={22} cy={-78} r={14} color="rgba(230,243,255,0.7)">

@@ -12,6 +12,18 @@ export type Stage = {
   color: string;
 };
 
+/** Todas las historias comparten estos tiempos: así reutilizan la línea de tiempo, las alertas y el cierre. */
+export const STAGE_STARTS = [0, 6, 12, 20, 27, 33];
+
+/** Etapa final de cada historia: el cierre de marca. */
+export const OUTRO_STAGE: Stage = {
+  label: 'Wasi', start: 33, clock: '', color: '#E11D2A',
+  headline: 'Wasi detecta. Wasi alerta. Wasi protege. Wasi somos todos.',
+  sub: 'Únete.',
+};
+
+/* ---------- Historia 1: Valentina vuelve a casa ---------- */
+
 export const STAGES: Stage[] = [
   { label: 'Peligro', start: 0, clock: '19:42', color: '#FFFFFF',
     headline: 'Valentina, 12 años, vuelve sola a casa.',
@@ -28,12 +40,10 @@ export const STAGES: Stage[] = [
   { label: 'A salvo', start: 27, clock: '19:47', color: '#22C55E',
     headline: 'Valentina está a salvo.',
     sub: 'Porque su comunidad estaba conectada. Nadie camina solo.' },
-  { label: 'Wasi', start: 33, clock: '', color: '#E11D2A',
-    headline: 'Wasi detecta. Wasi alerta. Wasi protege. Wasi somos todos.',
-    sub: 'Únete.' },
+  OUTRO_STAGE,
 ];
 
-const STARTS = STAGES.map((s) => s.start);
+const STARTS = STAGE_STARTS;
 
 export function stageIndex(t: number) {
   'worklet';
@@ -42,7 +52,7 @@ export function stageIndex(t: number) {
 }
 
 export function stageEnd(i: number) {
-  return i < STAGES.length - 1 ? STAGES[i + 1].start : END;
+  return i < STAGE_STARTS.length - 1 ? STAGE_STARTS[i + 1] : END;
 }
 
 /* ---------- Cierre de marca ---------- */
@@ -66,6 +76,19 @@ export const OUTRO = {
 /* ---------- Cortes a interiores (quién recibe la alerta) ---------- */
 
 export type Cut = { start: number; end: number; title: string; a: string; b: string; swap: number; color: string };
+
+/** Etiquetas de la IA, ancladas a puntos de la escena. */
+export type Label = { text: string; x: number; y: number; a: number; b: number; kind: 'tag' | 'danger' | 'ok' };
+
+export const LABELS: Label[] = [
+  { text: 'Cámara IP', x: 830, y: 500, a: 6.6, b: 12.2, kind: 'tag' },
+  { text: 'Celular reciclado', x: 1212, y: 555, a: 7.0, b: 12.2, kind: 'tag' },
+  { text: 'Dron', x: 1110, y: 236, a: 9.0, b: 12.2, kind: 'tag' },
+  { text: 'Arma detectada · 94%', x: 1236, y: 778, a: 7.7, b: 22.8, kind: 'danger' },
+  { text: 'Susto detectado · 96%', x: 956, y: 626, a: 9.8, b: 12.15, kind: 'danger' },
+  { text: 'Alerta enviada', x: 956, y: 626, a: 12.15, b: 20, kind: 'danger' },
+  { text: 'A salvo', x: 1030, y: 626, a: 28.2, b: END + 5, kind: 'ok' },
+];
 
 export const CUTS: Cut[] = [
   { start: 13.2, end: 15.0, title: 'Vecino del 4B', a: 'Dormido. Su celular vibra.', b: 'Se levanta y baja a la calle', swap: 1.0, color: '#FFD27A' },
@@ -110,7 +133,7 @@ export function cutFlash(t: number) {
 /* ---------- Cámara de la calle ---------- */
 
 /** [tiempo, x, y, zoom] en coordenadas de la escena (1600 × 1000). */
-const KF: number[][] = [
+export const KF: number[][] = [
   [0, 820, 560, 1.0],
   [5.8, 1010, 650, 1.35],
   [6.5, 1150, 720, 1.6],
@@ -132,12 +155,12 @@ const KF: number[][] = [
   [33.0, 1000, 640, 2.05],
 ];
 
-export function camAt(t: number) {
+export function camAt(t: number, kf: number[][]) {
   'worklet';
   let i = 0;
-  while (i < KF.length - 2 && t > KF[i + 1][0]) i++;
-  const a = KF[i];
-  const b = KF[i + 1];
+  while (i < kf.length - 2 && t > kf[i + 1][0]) i++;
+  const a = kf[i];
+  const b = kf[i + 1];
   const p = easeInOut(prog(t, a[0], b[0]));
   return { x: mix(a[1], b[1], p), y: mix(a[2], b[2], p), z: mix(a[3], b[3], p) };
 }
