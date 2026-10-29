@@ -20,6 +20,8 @@ Hecho con **Expo (React Native)**, **Skia** y **Reanimated**. El mismo código f
 | **Wasi detecta · alerta · protege** | **Wasi somos todos · Únete** |
 | ![Cierre: Wasi detecta, alerta, protege](docs/03-wasi-protege.jpg) | ![Cierre: Únete y tiendas](docs/04-unete.jpg) |
 
+**Ver en línea:** https://diegofrans2024.github.io/wasi-hero/ (también `?h=2` o `?h=3` para empezar en otra historia)
+
 ---
 
 ## Inicio rápido
@@ -156,6 +158,7 @@ npx expo start       # servidor de desarrollo (QR para el celular)
 npm run typecheck    # revisa tipos
 npx expo lint        # revisa el código
 npm run build:web    # versión web lista para publicar, en dist/
+npm run build:pages  # versión web para GitHub Pages (servida desde /wasi-hero)
 npx expo-doctor      # diagnostica dependencias
 ```
 

@@ -32,7 +32,8 @@
     "postinstall": "setup-skia-web",
     "typecheck": "tsc --noEmit",
     "build:web": "expo export --platform web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:pages": "EXPO_BASE_URL=/wasi-hero expo export --platform web && touch dist/.nojekyll"
   },
   "private": true
 }
