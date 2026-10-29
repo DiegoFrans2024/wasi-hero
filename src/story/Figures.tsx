@@ -15,11 +15,12 @@ export type Look = {
   body: string;
   legs: string;
   skin: string;
-  hair?: 'short' | 'long' | 'cap' | 'hood' | 'none';
+  hair?: 'short' | 'long' | 'cap' | 'hood' | 'none' | 'bun' | 'helmet';
   hairColor?: string;
   stripes?: boolean;
   officer?: boolean;
   tie?: boolean; // uniforme escolar
+  apron?: boolean;
 };
 
 /** Emociones de un rostro. Cada una va de 0 a 1 y se pueden mezclar. */
@@ -204,9 +205,10 @@ function HeadShade({ cx, cy, r, side = 1 }: { cx: number; cy: number; r: number;
 type AdultProps = {
   clock: Num;
   x: Num;
-  y: number;
+  y: number | Num;
   look: Look;
   scale?: number;
+  flip?: boolean; // mira al otro lado: el brazo derecho apunta a la izquierda
   walk?: Num;    // 0 quieto, 1 caminando o corriendo
   armsUp?: Num;  // 0 brazos abajo, 1 manos arriba
   phone?: Num;   // brillo del celular en la mano (0..1)
@@ -219,8 +221,8 @@ type AdultProps = {
 };
 
 /** Persona adulta en silueta ilustrada. Origen en los pies. */
-export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, ring, opacity = 1, mood, seed = 0, point, holding }: AdultProps) {
-  const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scale }]);
+export function Adult({ clock, x, y, look, scale = 1, flip = false, walk, armsUp, phone, ring, opacity = 1, mood, seed = 0, point, holding }: AdultProps) {
+  const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: read(y) }, { scaleX: flip ? -scale : scale }, { scaleY: scale }]);
   const swing = useDerivedValue(() => (walk ? walk.value : 0) * Math.sin(clock.value * 15) * 0.55);
   const legA = useDerivedValue<Transforms3d>(() => [{ rotate: swing.value }]);
   const legB = useDerivedValue<Transforms3d>(() => [{ rotate: -swing.value }]);
@@ -241,6 +243,7 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, ring,
         <RoundedRect x={-9} y={-62} width={8} height={62} r={3} color={look.legs} />
       </Group>
       {look.hair === 'long' && <Path path={HAIR_LONG} color={look.hairColor ?? '#2B1B14'} />}
+      {look.hair === 'bun' && <Circle cx={0} cy={-165} r={7.5} color={look.hairColor ?? '#2B1B14'} />}
       {look.hair === 'hood' && <Path path={HOOD} color={shade(look.body)} />}
       <RoundedRect x={-4.5} y={-142} width={9} height={10} r={3} color={shade(look.skin, 0.85)} />
       <Path path={TORSO} color={look.body} />
@@ -249,6 +252,13 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, ring,
       </Path>
       {look.stripes && (
         <Path path="M-17 -102H17M-17 -86H17M-17 -70H17" style="stroke" strokeWidth={3} color="#7FA6D3" />
+      )}
+      {look.apron && (
+        <>
+          <Path path="M-6 -133L-10 -112M6 -133L10 -112" style="stroke" strokeWidth={2} color="#F1E6D2" />
+          <RoundedRect x={-12} y={-114} width={24} height={52} r={4} color="#F1E6D2" />
+          <RoundedRect x={-7} y={-96} width={14} height={9} r={2} color="#E3D3B8" />
+        </>
       )}
       {look.tie && (
         <>
@@ -299,7 +309,13 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, ring,
       </Group>
       <Circle cx={0} cy={headY} r={headR} color={look.skin} />
       <HeadShade cx={0} cy={headY} r={headR} />
-      {look.hair === 'short' && <Path path={HAIR_SHORT} color={look.hairColor ?? '#20160F'} />}
+      {(look.hair === 'short' || look.hair === 'bun') && <Path path={HAIR_SHORT} color={look.hairColor ?? '#20160F'} />}
+      {look.hair === 'helmet' && (
+        <>
+          <Path path="M-16.5 -146Q-17 -170 0 -170Q17 -170 16.5 -146H11.5Q12 -159 0 -159Q-12 -159 -11.5 -146Z" color={look.hairColor ?? '#14171E'} />
+          <RoundedRect x={-13} y={-166} width={26} height={5} r={2} color="#3A4A6A" />
+        </>
+      )}
       {look.hair === 'long' && (
         <Path path="M-13 -152Q-12 -165 0 -165Q13 -165 13 -152Q6 -158 0 -157Q-7 -157 -13 -152Z" color={look.hairColor ?? '#2B1B14'} />
       )}

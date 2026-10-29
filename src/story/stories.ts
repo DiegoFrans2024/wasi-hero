@@ -6,6 +6,9 @@ import { Interiors } from './Interiors';
 import { BusScene } from './bus/BusScene';
 import { BusInteriors } from './bus/BusInteriors';
 import { BUS_CUTS, BUS_KF, BUS_LABELS, BUS_STAGES } from './bus/busTimeline';
+import { ShopScene } from './shop/ShopScene';
+import { ShopInteriors } from './shop/ShopInteriors';
+import { SHOP_CUTS, SHOP_KF, SHOP_LABELS, SHOP_STAGES } from './shop/shopTimeline';
 
 type Num = SharedValue<number>;
 
@@ -24,6 +27,7 @@ export type StoryDef = {
 export const STORIES: StoryDef[] = [
   { title: 'Camino a casa', stages: STAGES, cuts: CUTS, kf: KF, labels: LABELS, rain: true, Scene: Street, Interiors },
   { title: 'Bus al colegio', stages: BUS_STAGES, cuts: BUS_CUTS, kf: BUS_KF, labels: BUS_LABELS, rain: false, Scene: BusScene, Interiors: BusInteriors },
+  { title: 'Tienda de barrio', stages: SHOP_STAGES, cuts: SHOP_CUTS, kf: SHOP_KF, labels: SHOP_LABELS, rain: false, Scene: ShopScene, Interiors: ShopInteriors },
 ];
 
 /**
