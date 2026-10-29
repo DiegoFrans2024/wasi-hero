@@ -1,38 +1,94 @@
-# Wasi Protect · Historia animada (React Native + Expo)
+# Wasi Protect · Historia animada
 
-Recreación cinematográfica de 33 segundos: Valentina vuelve sola a casa, la IA de Wasi detecta **el arma y el susto**, la alerta llega a un vecino que dormía, a la policía y a sus papás, todos llegan y la policía detiene a los sospechosos. Cierra con la marca: **Wasi detecta · Wasi alerta · Wasi protege · Wasi somos todos · Únete**, con los logos de App Store y Google Play.
+Video interactivo de unos 40 segundos que cuenta, en una sola escena, cómo funciona **Wasi**: la IA detecta el peligro, la alerta llega a toda la comunidad y la niña termina a salvo. Cierra con la marca: **Wasi detecta · Wasi alerta · Wasi protege · Wasi somos todos · Únete**.
 
-Funciona en **iOS, Android y web** con el mismo código.
+Hecho con **Expo (React Native)**, **Skia** y **Reanimated**. El mismo código funciona en **web, iOS y Android**.
 
-## Requisitos
+| Detección | Alerta |
+| --- | --- |
+| ![La IA de Wasi detecta el arma](docs/01-deteccion.jpg) | ![La alerta despierta al vecino](docs/02-alerta.jpg) |
+| **Wasi detecta · alerta · protege** | **Wasi somos todos · Únete** |
+| ![Cierre: Wasi detecta, alerta, protege](docs/03-wasi-protege.jpg) | ![Cierre: Únete y tiendas](docs/04-unete.jpg) |
 
-- Node.js 20 o superior
-- En tu celular: la app **Expo Go** (App Store / Google Play)
+---
 
-## Instalar y correr
+## Inicio rápido
+
+Necesitas **Node.js 20 o superior**.
 
 ```bash
+git clone git@github.com:DiegoFrans2024/wasi-hero.git
 cd wasi-hero
-npm install          # instala todo y prepara Skia para web
-npx expo start       # abre el servidor de desarrollo
+npm install          # instala todo y prepara Skia para la web
+npm run web          # abre la historia en el navegador
 ```
 
-Luego:
+Se abre en **http://localhost:8081**.
 
-- **Celular:** escanea el código QR con Expo Go (Android) o con la cámara (iPhone).
-- **Web:** presiona `w` en la terminal.
-- **Simuladores:** `i` para iOS (requiere Mac con Xcode) o `a` para Android.
+### En el celular
 
-Si alguna librería no carga en Expo Go, crea una *development build*:
-`npx expo run:ios` o `npx expo run:android` (o en la nube con `npx eas-cli@latest build --profile development`).
+```bash
+npx expo start
+```
 
-## Qué la hace más real
+Escanea el código QR con la app **Expo Go** (Android) o con la cámara (iPhone). Si alguna librería no carga en Expo Go, crea una *development build* con `npx expo run:ios` o `npx expo run:android`.
 
-- **Cámara de cine:** acercamientos al arma y al rostro de Valentina, barridos y sacudón al dispararse la alerta.
-- **Cortes a interiores:** el vecino dormido que despierta, la patrulla que arranca con sirenas y los papás que salen corriendo.
-- **Luz y clima:** lluvia, calle mojada con reflejos, halos en faros y postes, luces de sirena que tiñen la escena, viñeta y grano de película.
-- **Vibración del teléfono** (iOS/Android) en el arma, el susto, la alerta, el frenazo de la patrulla y el final.
-- Todo corre en el hilo de UI con **Reanimated 4** y se dibuja con **Skia** (GPU).
+---
+
+## La historia, segundo a segundo
+
+| Segundo | Momento | Qué pasa |
+| --- | --- | --- |
+| 0 | **Peligro** | Valentina, 9 años, vuelve sola a casa. Una camioneta se detiene a su lado. |
+| 6 | **Detección** | Una cámara IP, un celular reciclado y un dron detectan el arma y el susto. |
+| 12 | **Alerta** | En 3 segundos la alerta llega a un vecino que dormía, a la policía y a sus papás. |
+| 20 | **Captura** | Todos llegan. La policía detiene a los sospechosos. |
+| 27 | **A salvo** | Valentina está a salvo. Nadie camina solo. |
+| 33 | **Wasi** | Wasi detecta · Wasi alerta · Wasi protege → Wasi somos todos → **Únete** + App Store y Google Play. |
+
+En el cierre, cada verbo usa el color de su momento en la historia: azul (detección), rojo (alerta) y verde (a salvo).
+
+En la parte inferior hay una línea de tiempo: toca cualquier momento para saltar ahí, o usa **Saltar** / **Ver de nuevo**.
+
+### Ver un momento exacto
+
+Agrega `?t=` y el segundo a la dirección. La escena queda congelada ahí:
+
+- `http://localhost:8081/?t=8.2` → el arma detectada
+- `http://localhost:8081/?t=40.5` → el cierre completo
+
+---
+
+## Cambiar textos, tiempos y colores
+
+Casi todo se edita en **`src/story/timeline.ts`**:
+
+| Quiero cambiar… | Dónde |
+| --- | --- |
+| Títulos y subtítulos de cada momento | `STAGES` |
+| Rótulos de los cortes (vecino, policía, papás) | `CUTS` |
+| Verbos y colores del cierre (DETECTA, ALERTA, PROTEGE) | `BEATS` |
+| Tiempos del cierre (Somos todos, Únete, tiendas) | `OUTRO` |
+| Movimiento de la cámara | `KF` → `[segundo, x, y, zoom]` |
+| Vibraciones del celular | `HAPTICS` |
+| Colores y tipografías generales | `src/story/theme.ts` |
+
+### Conectar los botones del final
+
+El botón **Únete**, las insignias de las tiendas y "Ver cómo funciona" todavía no abren nada. Pásales las acciones en `App.tsx` y `App.web.tsx`:
+
+```tsx
+import { Linking } from 'react-native';
+
+<HeroStory
+  onJoin={() => Linking.openURL('https://…')}
+  onAppStore={() => Linking.openURL('https://apps.apple.com/app/…')}
+  onGooglePlay={() => Linking.openURL('https://play.google.com/store/apps/details?id=…')}
+  onLearnMore={() => Linking.openURL('https://…')}
+/>
+```
+
+---
 
 ## Estructura
 
@@ -40,36 +96,38 @@ Si alguna librería no carga en Expo Go, crea una *development build*:
 App.tsx                 Entrada iOS/Android
 App.web.tsx             Entrada web (carga Skia/WebAssembly primero)
 src/story/
+  timeline.ts           Textos, tiempos, cámara, cortes y cierre  ← lo más fácil de editar
   HeroStory.tsx         Pantalla: reloj de la historia, textos, línea de tiempo, vibración
-  timeline.ts           Textos, tiempos, cámara y cortes  ← lo más fácil de editar
-  StoryCanvas.tsx       Lienzo Skia + efectos de pantalla (lluvia, sirenas, viñeta)
+  Outro.tsx             Cierre de marca: Wasi detecta/alerta/protege, Únete y tiendas
+  StoryCanvas.tsx       Lienzo Skia + efectos (lluvia, sirenas, viñeta, grano)
   Street.tsx            La calle: personajes, vehículos, detección
   Interiors.tsx         Los tres cortes: vecino, policía, papás
   Figures.tsx           Personas (Valentina y adultos)
   Vehicles.tsx          Camioneta, patrulla y dron
   Hud.tsx               Etiquetas de la IA y rótulos de los cortes
-  Outro.tsx             Cierre de marca: Wasi detecta/alerta/protege, Únete y tiendas
   city.ts / math.ts / theme.ts
+docs/                   Capturas para este README
 ```
 
-## Personalizar
+Todo se anima en el hilo de UI con **Reanimated 4** y se dibuja en GPU con **Skia**, así que va fluido incluso en celulares modestos. En la web, Skia se carga como WebAssembly (`public/canvaskit.wasm`, que `npm install` genera automáticamente).
 
-- **Textos:** `STAGES` y `CUTS` en `src/story/timeline.ts`.
-- **Ritmo de la cámara:** la lista `KF` en el mismo archivo (`[segundo, x, y, zoom]`).
-- **Cierre de marca:** `BEATS` (verbos y colores) y `OUTRO` (tiempos) en `src/story/timeline.ts`.
-- **Botones finales:** `<HeroStory onJoin={...} onLearnMore={...} onAppStore={...} onGooglePlay={...} />`.
-- **Colores y tipografías:** `src/story/theme.ts`.
+---
 
-## Revisar un momento exacto (web)
-
-Abre la versión web con `?t=` y el segundo que quieras, por ejemplo `http://localhost:8081/?t=9.9`, o `?t=40.5` para ver el cierre completo. La escena queda congelada ahí.
-
-## Comandos útiles
+## Comandos
 
 ```bash
+npm run web          # historia en el navegador
+npx expo start       # servidor de desarrollo (QR para el celular)
 npm run typecheck    # revisa tipos
-npm run build:web    # genera la versión web en dist/
+npx expo lint        # revisa el código
+npm run build:web    # versión web lista para publicar, en dist/
 npx expo-doctor      # diagnostica dependencias
 ```
 
-> Los porcentajes que muestra la IA (94 %, 96 %) son ilustrativos. Ajústalos a los valores reales del producto.
+---
+
+## Antes de publicar
+
+- [ ] Conectar **Únete**, las tiendas y "Ver cómo funciona" a sus enlaces reales (ver arriba).
+- [ ] Reemplazar las insignias de App Store y Google Play por las **oficiales** de Apple y Google (tienen reglas de uso de marca).
+- [ ] Ajustar los porcentajes de la IA (94 %, 96 %) a los valores reales del producto; hoy son ilustrativos.
