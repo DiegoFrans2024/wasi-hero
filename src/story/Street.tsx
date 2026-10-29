@@ -7,21 +7,23 @@ import type { Transforms3d } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { city, LAMPS } from './city';
 import { easeInOut, easeOut, easeOutBack, easeOutQuint, mix, prog, win } from './math';
-import { Adult, Girl, type Look } from './Figures';
+import { Adult, Girl, type Look, type Mood } from './Figures';
 import { Drone, PoliceCar, Van } from './Vehicles';
 import { C } from './theme';
 
 type Num = SharedValue<number>;
 
 /* ---------- Personajes que llegan ---------- */
-const NEIGHBORS: { x0: number; x1: number; d: number; look: Look }[] = [
+type Arrival = { x0: number; x1: number; d: number; look: Look };
+
+const NEIGHBORS: Arrival[] = [
   { x0: -80, x1: 860, d: 0, look: { body: '#4E6BA8', legs: '#33497A', skin: '#B9825B', hair: 'short' } },
   { x0: -20, x1: 905, d: 0.3, look: { body: '#9FC3E8', legs: '#45386A', skin: '#F0C9A6', hair: 'long', hairColor: '#5A3A22', stripes: true } },
   { x0: 1660, x1: 1125, d: 0.2, look: { body: '#B8901F', legs: '#2B3F5E', skin: '#8D5B3C', hair: 'short' } },
   { x0: 1720, x1: 1170, d: 0.5, look: { body: '#6B7FA8', legs: '#33497A', skin: '#C68E62', hair: 'none' } },
   { x0: 1790, x1: 1215, d: 0.8, look: { body: '#3E5C96', legs: '#26365A', skin: '#E2B08A', hair: 'short', hairColor: '#6B4A2E' } },
 ];
-const PARENTS: { x0: number; x1: number; d: number; look: Look }[] = [
+const PARENTS: Arrival[] = [
   { x0: 1760, x1: 1040, d: 0, look: { body: '#C2414B', legs: '#2C2F45', skin: '#E2B08A', hair: 'long' } },
   { x0: 1830, x1: 1082, d: 0.3, look: { body: '#556B8F', legs: '#26365A', skin: '#C68E62', hair: 'short' } },
 ];
@@ -30,19 +32,28 @@ const OFFICER2: Look = { ...OFFICER, skin: '#E2B08A' };
 const SUSPECT: Look = { body: '#5A6172', legs: '#1A1D24', skin: '#D9A47C', hair: 'hood' };
 const SUSPECT2: Look = { ...SUSPECT, skin: '#9A6A48' };
 
-function Walker({ clock, item, t0, dur, phone }: { clock: Num; item: { x0: number; x1: number; d: number; look: Look }; t0: number; dur: number; phone?: boolean }) {
+/** Vecinos: llegan preocupados y sonríen cuando Valentina está a salvo. Papás: llegan con pánico, abren los brazos y se alivian. */
+function Walker({ clock, item, t0, dur, phone, parent, seed }: { clock: Num; item: Arrival; t0: number; dur: number; phone?: boolean; parent?: boolean; seed: number }) {
   const p = useDerivedValue(() => prog(clock.value, t0 + item.d, t0 + item.d + dur));
   const x = useDerivedValue(() => mix(item.x0, item.x1, easeOut(p.value)));
   const walk = useDerivedValue<number>(() => (p.value > 0 && p.value < 0.97 ? 1 : 0));
   const glow = useDerivedValue(() => (phone ? 0.6 + 0.4 * Math.sin(clock.value * 3 + item.d * 5) : 0));
-  return <Adult clock={clock} x={x} y={748} look={item.look} walk={walk} phone={phone ? glow : undefined} />;
+  const joy = useDerivedValue(() => prog(clock.value, 27.6 + item.d * 0.3, 28.4 + item.d * 0.3));
+  const fear = useDerivedValue(() => (parent ? 1 - prog(clock.value, 25, 26) : 0) * (1 - joy.value));
+  const worry = useDerivedValue(() => (parent ? 0.8 : 1) * (1 - joy.value) * (1 - fear.value));
+  const reach = useDerivedValue(() => (parent ? 0.12 * prog(clock.value, t0 + item.d + dur - 0.4, t0 + item.d + dur + 0.6) : 0));
+  const mood: Mood = { fear, worry, joy };
+  return <Adult clock={clock} x={x} y={748} look={item.look} walk={walk} armsUp={reach} phone={phone ? glow : undefined} mood={mood} seed={seed} />;
 }
 
-function Static({ clock, x, look, armsUp }: { clock: Num; x: number; look: Look; armsUp?: boolean }) {
+function Static({ clock, x, look, armsUp, mood, seed }: { clock: Num; x: number; look: Look; armsUp?: boolean; mood: Mood; seed: number }) {
   const xv = useDerivedValue<number>(() => x);
   const up = useDerivedValue<number>(() => (armsUp ? 1 : 0));
-  return <Adult clock={clock} x={xv} y={880} look={look} armsUp={up} />;
+  return <Adult clock={clock} x={xv} y={880} look={look} armsUp={up} mood={mood} seed={seed} />;
 }
+
+const STERN: Mood = { focus: 1 };
+const CAUGHT: Mood = { fear: 0.55, worry: 0.6 };
 
 /* ---------- Escena de la calle (coordenadas 1600 × 1000) ---------- */
 export function Street({ clock }: { clock: Num }) {
@@ -63,6 +74,10 @@ export function Street({ clock }: { clock: Num }) {
   );
   const girlWalk = useDerivedValue<number>(() => (t.value > 0.3 && t.value < 5.8 ? 1 : 0));
   const fear = useDerivedValue(() => easeOut(prog(t.value, 8.95, 9.3)) * (1 - prog(t.value, 24.5, 25.2)));
+  const girlJoy = useDerivedValue(() => easeOut(prog(t.value, 27.5, 28.3)));
+  const girlWorry = useDerivedValue(() => Math.max(prog(t.value, 4.6, 5.4), prog(t.value, 24.5, 25.2)) * (1 - fear.value) * (1 - girlJoy.value));
+  const girlTears = useDerivedValue(() => win(t.value, 10.2, 27.4, 0.6));
+  const girlMood: Mood = { fear, worry: girlWorry, joy: girlJoy, tears: girlTears };
 
   // Camioneta
   const vanX = useDerivedValue(() =>
@@ -221,22 +236,22 @@ export function Street({ clock }: { clock: Num }) {
       </Line>
 
       {/* Personas en la vereda */}
-      <Girl clock={t} x={girlX} walk={girlWalk} fear={fear} />
+      <Girl clock={t} x={girlX} walk={girlWalk} fear={fear} mood={girlMood} />
       {NEIGHBORS.map((n, i) => (
-        <Walker key={`n${i}`} clock={t} item={n} t0={17.0} dur={3.0} phone />
+        <Walker key={`n${i}`} clock={t} item={n} t0={17.0} dur={3.0} phone seed={i + 1} />
       ))}
       {PARENTS.map((n, i) => (
-        <Walker key={`p${i}`} clock={t} item={n} t0={21.0} dur={3.2} />
+        <Walker key={`p${i}`} clock={t} item={n} t0={21.0} dur={3.2} parent seed={i + 7} />
       ))}
 
       {/* Vehículos */}
       <Van x={vanX} door={door} />
       <PoliceCar clock={t} x={copX} />
       <Group opacity={arrest}>
-        <Static clock={t} x={1094} look={OFFICER} />
-        <Static clock={t} x={1162} look={SUSPECT} armsUp />
-        <Static clock={t} x={1230} look={SUSPECT2} armsUp />
-        <Static clock={t} x={1298} look={OFFICER2} />
+        <Static clock={t} x={1094} look={OFFICER} mood={STERN} seed={3.1} />
+        <Static clock={t} x={1162} look={SUSPECT} armsUp mood={CAUGHT} seed={4.2} />
+        <Static clock={t} x={1230} look={SUSPECT2} armsUp mood={CAUGHT} seed={5.3} />
+        <Static clock={t} x={1298} look={OFFICER2} mood={STERN} seed={6.4} />
       </Group>
       <Drone clock={t} x={droneX} y={droneY} spot={spot} />
 

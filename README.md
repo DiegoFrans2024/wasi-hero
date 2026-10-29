@@ -39,7 +39,7 @@ Escanea el código QR con la app **Expo Go** (Android) o con la cámara (iPhone)
 
 | Segundo | Momento | Qué pasa |
 | --- | --- | --- |
-| 0 | **Peligro** | Valentina, 9 años, vuelve sola a casa. Una camioneta se detiene a su lado. |
+| 0 | **Peligro** | Valentina, 12 años, vuelve sola a casa. Una camioneta se detiene a su lado. |
 | 6 | **Detección** | Una cámara IP, un celular reciclado y un dron detectan el arma y el susto. |
 | 12 | **Alerta** | En 3 segundos la alerta llega a un vecino que dormía, a la policía y a sus papás. |
 | 20 | **Captura** | Todos llegan. La policía detiene a los sospechosos. |

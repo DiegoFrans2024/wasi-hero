@@ -14,7 +14,7 @@ export type Stage = {
 
 export const STAGES: Stage[] = [
   { label: 'Peligro', start: 0, clock: '19:42', color: '#FFFFFF',
-    headline: 'Valentina, 9 años, vuelve sola a casa.',
+    headline: 'Valentina, 12 años, vuelve sola a casa.',
     sub: 'Una camioneta se detiene a su lado.' },
   { label: 'Detección', start: 6, clock: '19:43:07', color: '#6CC4FF',
     headline: 'La IA de Wasi ve el arma y el susto.',
@@ -70,8 +70,11 @@ export type Cut = { start: number; end: number; title: string; a: string; b: str
 export const CUTS: Cut[] = [
   { start: 13.2, end: 15.0, title: 'Vecino del 4B', a: 'Dormido. Su celular vibra.', b: 'Se levanta y baja a la calle', swap: 1.0, color: '#FFD27A' },
   { start: 15.0, end: 16.6, title: 'Policía', a: 'Aviso de arma, con video y ubicación', b: 'Unidad 12 en camino', swap: 0.8, color: '#6EA8FF' },
-  { start: 16.6, end: 18.2, title: 'Papás de Valentina', a: '“Valentina está en peligro”', b: 'Salen corriendo de casa', swap: 0.8, color: '#FF8A92' },
+  { start: 16.6, end: 18.2, title: 'Papás de Valentina', a: '“Valentina está en peligro”', b: 'Salen corriendo del trabajo', swap: 0.8, color: '#FF8A92' },
 ];
+
+/** Los rótulos de los cortes se acumulan en una lista que queda en pantalla hasta este segundo, para que se alcancen a leer. */
+export const ALERT_LIST_END = 20;
 
 const CUT_T = CUTS.map((c) => [c.start, c.end]);
 const CUT_EDGES = [13.2, 15.0, 16.6, 18.2];

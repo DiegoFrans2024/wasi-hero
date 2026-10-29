@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
-import { CUTS, END, streetVisible } from './timeline';
+import { ALERT_LIST_END, CUTS, END, streetVisible } from './timeline';
 import { prog, win } from './math';
 import { C, FONT } from './theme';
 import type { Cam } from './StoryCanvas';
@@ -42,40 +42,41 @@ function Label({ clock, cam, item }: { clock: Num; cam: SharedValue<Cam>; item: 
   );
 }
 
-/** Rótulo de cada corte: quién está recibiendo la alerta. */
-function Chyron({ clock, i, top }: { clock: Num; i: number; top: number }) {
+/** Rótulo de cada corte: quién está recibiendo la alerta. Se suma a la lista y no se borra. */
+function Chyron({ clock, i }: { clock: Num; i: number }) {
   const cut = CUTS[i];
+  const next = i < CUTS.length - 1 ? CUTS[i + 1].start : ALERT_LIST_END;
   const box = useAnimatedStyle(() => {
     const t = clock.value;
-    const o = t >= cut.start && t <= cut.end ? Math.min(1, (t - cut.start) / 0.2) : 0;
-    return { opacity: o, transform: [{ translateY: (1 - o) * -8 }] };
+    const o = prog(t, cut.start, cut.start + 0.25) * (1 - prog(t, ALERT_LIST_END - 0.4, ALERT_LIST_END));
+    // El corte en pantalla va resaltado; los anteriores quedan un poco atenuados
+    return { opacity: o * (1 - 0.25 * prog(t, next, next + 0.3)), transform: [{ translateY: (1 - prog(t, cut.start, cut.start + 0.3)) * -10 }] };
   });
-  const a = useAnimatedStyle(() => ({ opacity: 1 - prog(clock.value, cut.start + cut.swap, cut.start + cut.swap + 0.2) }));
-  const b = useAnimatedStyle(() => ({ opacity: prog(clock.value, cut.start + cut.swap, cut.start + cut.swap + 0.2) }));
+  const b = useAnimatedStyle(() => ({ opacity: prog(clock.value, cut.start + cut.swap, cut.start + cut.swap + 0.25) }));
   return (
-    <Animated.View pointerEvents="none" style={[styles.chyron, { top, borderColor: cut.color }, box]}>
+    <Animated.View style={[styles.chyron, { borderColor: cut.color }, box]}>
       <View style={styles.chyronHead}>
         <View style={[styles.live, { backgroundColor: cut.color }]} />
         <Text style={styles.chyronTitle}>{cut.title}</Text>
         <Text style={styles.chyronTime}>Alerta Wasi</Text>
       </View>
-      <View>
-        <Animated.Text style={[styles.chyronText, a]}>{cut.a}</Animated.Text>
-        <Animated.Text style={[styles.chyronText, styles.chyronB, { color: cut.color }, b]}>{cut.b}</Animated.Text>
-      </View>
+      <Text style={styles.chyronText}>{cut.a}</Text>
+      <Animated.Text style={[styles.chyronText, styles.chyronB, { color: cut.color }, b]}>{cut.b}</Animated.Text>
     </Animated.View>
   );
 }
 
-export function Hud({ clock, cam, top }: { clock: Num; cam: SharedValue<Cam>; top: number }) {
+export function Hud({ clock, cam, top, landscape }: { clock: Num; cam: SharedValue<Cam>; top: number; landscape: boolean }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {LABELS.map((l) => (
         <Label key={l.text} clock={clock} cam={cam} item={l} />
       ))}
-      {CUTS.map((_, i) => (
-        <Chyron key={i} clock={clock} i={i} top={top} />
-      ))}
+      <View style={[styles.chyrons, landscape ? styles.chyronsLand : styles.chyronsPort, { top }]}>
+        {CUTS.map((_, i) => (
+          <Chyron key={i} clock={clock} i={i} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -85,11 +86,14 @@ const styles = StyleSheet.create({
   tag: { borderRadius: 999, borderWidth: 1.5, borderColor: C.scan },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.scan },
   labelText: { color: '#fff', fontFamily: FONT.bold, fontSize: 13 },
-  chyron: { position: 'absolute', left: 16, right: 16, maxWidth: 380, backgroundColor: 'rgba(7,14,34,0.88)', borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  chyrons: { position: 'absolute', gap: 8 },
+  chyronsPort: { left: 16, right: 16, maxWidth: 380 },
+  chyronsLand: { right: 24, width: 340 },
+  chyron: { backgroundColor: 'rgba(7,14,34,0.88)', borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
   chyronHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   live: { width: 8, height: 8, borderRadius: 4 },
   chyronTitle: { color: '#fff', fontFamily: FONT.bold, fontSize: 15, flex: 1 },
   chyronTime: { color: '#9FB0CC', fontFamily: FONT.semi, fontSize: 12 },
-  chyronText: { color: '#C7D3E8', fontFamily: FONT.semi, fontSize: 14 },
-  chyronB: { position: 'absolute', left: 0, top: 0 },
+  chyronText: { color: '#C7D3E8', fontFamily: FONT.semi, fontSize: 15, lineHeight: 20 },
+  chyronB: { fontFamily: FONT.bold },
 });

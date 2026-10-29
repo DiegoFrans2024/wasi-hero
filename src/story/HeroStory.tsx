@@ -107,7 +107,7 @@ export default function HeroStory({ onJoin, onLearnMore, onAppStore, onGooglePla
   return (
     <View style={styles.root}>
       <StoryCanvas clock={clock} cam={cam} W={W} H={H} />
-      <Hud clock={clock} cam={cam} top={chyronTop} />
+      <Hud clock={clock} cam={cam} top={chyronTop} landscape={landscape} />
 
       <Animated.View style={[styles.nav, navStyle]} pointerEvents="none">
         <Text style={styles.logo}>WASI</Text>

@@ -1,11 +1,12 @@
 import React from 'react';
-import { BlurMask, Circle, Group, Path, RoundedRect, vec } from '@shopify/react-native-skia';
+import { BlurMask, Circle, Group, Path, RoundedRect, Skia, vec } from '@shopify/react-native-skia';
 import type { Transforms3d } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 type Num = SharedValue<number>;
 
 const TORSO = 'M-17 -58V-118Q-17 -134 0 -134Q17 -134 17 -118V-58Z';
+const TORSO_SHADE = 'M5 -58V-133.5Q17 -131 17 -118V-58Z';
 const HAIR_LONG = 'M-14 -150Q-14 -166 0 -166Q14 -166 14 -150L17 -120L-17 -120Z';
 const HAIR_SHORT = 'M-13 -156Q-12 -168 0 -168Q13 -168 13 -156Q6 -161 0 -160Q-7 -160 -13 -156Z';
 const HOOD = 'M-16 -146Q-16 -168 0 -168Q16 -168 16 -146L16 -134L-16 -134Z';
@@ -20,6 +21,164 @@ export type Look = {
   officer?: boolean;
 };
 
+/** Emociones de un rostro. Cada una va de 0 a 1 y se pueden mezclar. */
+export type Mood = {
+  fear?: Num | number;  // ojos muy abiertos, pupilas chicas, cejas arriba, boca abierta
+  worry?: Num | number; // cejas inclinadas, boca hacia abajo
+  joy?: Num | number;   // sonrisa, ojos entrecerrados, mejillas
+  sleep?: Num | number; // ojos cerrados
+  focus?: Num | number; // ceño fruncido, mirada firme
+  tears?: Num | number;
+};
+
+function read(v: Num | number | undefined) {
+  'worklet';
+  return v === undefined ? 0 : typeof v === 'number' ? v : v.value;
+}
+
+type FaceProps = {
+  clock: Num;
+  cx: number;
+  cy: number;
+  r: number;
+  skin: string;
+  mood?: Mood;
+  /** De perfil mirando a la derecha (un ojo); si no, de frente. */
+  profile?: boolean;
+  /** Desfasa el parpadeo para que no parpadeen todos a la vez. */
+  seed?: number;
+  brow?: string;
+};
+
+const NO_MOOD: Mood = {};
+
+/** Rostro dibujado sobre una cabeza circular de radio r. */
+export function Face({ clock, cx, cy, r, skin, mood = NO_MOOD, profile = false, seed = 0, brow = '#2B1B14' }: FaceProps) {
+  const u = r / 13;
+  const eyes = profile ? [cx + 0.5 * r] : [cx - 0.36 * r, cx + 0.36 * r];
+  const ey = cy - 0.02 * r;
+  const ew = (profile ? 2.8 : 3.6) * u;
+  const mx = profile ? cx + 0.62 * r : cx;
+  const my = cy + 0.46 * r;
+  const lid = shade(skin, 0.45);
+
+  const m = useDerivedValue(() => {
+    const t = clock.value;
+    const blink = (t + seed * 1.37) % 3.4 < 0.12 ? 1 : 0;
+    const fear = read(mood.fear);
+    const joy = read(mood.joy);
+    const sleep = read(mood.sleep);
+    return {
+      fear,
+      joy,
+      worry: read(mood.worry),
+      focus: read(mood.focus),
+      sleep,
+      open: Math.max(0, 1 - sleep - blink),
+      tears: read(mood.tears),
+    };
+  });
+
+  const eyeH = useDerivedValue(() => 3.4 * u * (1 + 0.5 * m.value.fear - 0.3 * m.value.focus - 0.35 * m.value.joy) * m.value.open);
+  const sclera = useDerivedValue(() => {
+    const p = Skia.PathBuilder.Make();
+    const h = eyeH.value;
+    if (h > 0.4 * u) for (const x of eyes) p.addOval(Skia.XYWHRect(x - ew / 2, ey - h / 2, ew, h));
+    return p.detach();
+  });
+  const pupils = useDerivedValue(() => {
+    const p = Skia.PathBuilder.Make();
+    const h = eyeH.value;
+    const pr = Math.min(h / 2, 1.35 * u * (1 - 0.4 * m.value.fear));
+    if (h > 0.4 * u) for (const x of eyes) p.addCircle(x + (profile ? 0.5 * u : 0), ey + 0.15 * u, pr);
+    return p.detach();
+  });
+  // Línea del párpado: pestaña arriba cuando está abierto, arco cuando está cerrado
+  const lids = useDerivedValue(() => {
+    const p = Skia.PathBuilder.Make();
+    const h = eyeH.value;
+    for (const x of eyes) {
+      if (h > 0.4 * u) {
+        p.moveTo(x - ew / 2 - 0.3 * u, ey - h / 2 + 0.3 * u);
+        p.quadTo(x, ey - h / 2 - 0.7 * u, x + ew / 2 + 0.3 * u, ey - h / 2 + 0.3 * u);
+      } else {
+        const bend = m.value.joy > 0.5 ? -1.2 : 1.1; // feliz: arco hacia arriba; dormido: hacia abajo
+        p.moveTo(x - ew / 2, ey);
+        p.quadTo(x, ey + bend * u, x + ew / 2, ey);
+      }
+    }
+    return p.detach();
+  });
+  const brows = useDerivedValue(() => {
+    const { fear, worry, focus, joy } = m.value;
+    const p = Skia.PathBuilder.Make();
+    const by = ey - 3.9 * u - 1.6 * u * fear - 0.5 * u * worry - 0.5 * u * joy + 0.7 * u * focus;
+    const innerLift = (1.7 * fear + 1.6 * worry - 1.8 * focus) * u;
+    for (const x of eyes) {
+      const dir = profile ? 1 : x < cx ? 1 : -1; // hacia el centro de la cara
+      const inner = x + dir * ew * 0.65;
+      const outer = x - dir * ew * 0.65;
+      p.moveTo(outer, by + 0.3 * u);
+      p.quadTo(x, by - 0.9 * u * (1 + 0.5 * joy), inner, by - innerLift);
+    }
+    return p.detach();
+  });
+  const mouth = useDerivedValue(() => {
+    const { fear, joy, worry, focus } = m.value;
+    const p = Skia.PathBuilder.Make();
+    const w = (profile ? 2.6 : 5.4) * u * (1 + 0.25 * joy - 0.25 * fear);
+    const smile = joy - 0.6 * fear - 0.5 * worry - 0.15 * focus;
+    const open = (0.95 * fear + 0.4 * joy) * 3.1 * u;
+    const cy0 = my - smile * 1.5 * u;
+    p.moveTo(mx - w / 2, cy0);
+    p.quadTo(mx, my + smile * 0.6 * u - open * 0.25, mx + w / 2, cy0);
+    p.quadTo(mx, my + smile * 1.8 * u + open, mx - w / 2, cy0);
+    p.close();
+    return p.detach();
+  });
+  const blush = useDerivedValue(() => 0.16 + 0.3 * m.value.joy);
+  const lidOp = useDerivedValue(() => (eyeH.value > 0.4 * u ? 0.85 : 1));
+  const tearT = useDerivedValue(() => (clock.value * 0.9 + seed) % 1);
+  const tearY = useDerivedValue(() => ey + 2 * u + tearT.value * 0.55 * r);
+  const tearOp = useDerivedValue(() => m.value.tears * (1 - tearT.value));
+  const tearX = eyes[eyes.length - 1] + (profile ? -0.2 * u : 0.6 * u);
+
+  return (
+    <Group>
+      {profile ? (
+        <Circle cx={cx + 0.96 * r} cy={cy + 0.1 * r} r={0.17 * r} color={skin} />
+      ) : (
+        <Path
+          path={`M${cx - 0.7 * u} ${cy + 0.17 * r}Q${cx} ${cy + 0.27 * r} ${cx + 0.7 * u} ${cy + 0.17 * r}`}
+          style="stroke" strokeWidth={0.9 * u} strokeCap="round" color={shade(skin, 0.68)}
+        />
+      )}
+      {(profile ? [cx + 0.32 * r] : [cx - 0.56 * r, cx + 0.56 * r]).map((bx) => (
+        <Circle key={bx} cx={bx} cy={cy + 0.3 * r} r={0.17 * r} color="#FF6F86" opacity={blush} />
+      ))}
+      <Path path={sclera} color="#F6F2EC" />
+      <Path path={pupils} color="#1B1311" />
+      <Path path={lids} style="stroke" strokeWidth={0.95 * u} strokeCap="round" color={lid} opacity={lidOp} />
+      <Path path={brows} style="stroke" strokeWidth={1.35 * u} strokeCap="round" color={brow} />
+      <Path path={mouth} color="#5A1F2B" />
+      <Path path={mouth} style="stroke" strokeWidth={1.05 * u} strokeJoin="round" color="#5A1F2B" />
+      <Circle cx={tearX} cy={tearY} r={0.75 * u} color="#BFE3FF" opacity={tearOp} />
+    </Group>
+  );
+}
+
+/** Sombra lateral de la cabeza, para que tenga volumen. `side` 1 = derecha, -1 = izquierda. */
+function HeadShade({ cx, cy, r, side = 1 }: { cx: number; cy: number; r: number; side?: number }) {
+  const clip = Skia.RRectXY(Skia.XYWHRect(cx - r, cy - r, 2 * r, 2 * r), r, r);
+  return (
+    <Group clip={clip}>
+      <Circle cx={cx + side * 0.8 * r} cy={cy + 0.15 * r} r={r} color="rgba(40,14,24,0.2)">
+        <BlurMask blur={r * 0.3} style="normal" />
+      </Circle>
+    </Group>
+  );
+}
+
 type AdultProps = {
   clock: Num;
   x: Num;
@@ -30,10 +189,12 @@ type AdultProps = {
   armsUp?: Num;  // 0 brazos abajo, 1 manos arriba
   phone?: Num;   // brillo del celular en la mano (0..1)
   opacity?: Num | number;
+  mood?: Mood;
+  seed?: number;
 };
 
 /** Persona adulta en silueta ilustrada. Origen en los pies. */
-export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opacity = 1 }: AdultProps) {
+export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opacity = 1, mood, seed = 0 }: AdultProps) {
   const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scale }]);
   const swing = useDerivedValue(() => (walk ? walk.value : 0) * Math.sin(clock.value * 15) * 0.55);
   const legA = useDerivedValue<Transforms3d>(() => [{ rotate: swing.value }]);
@@ -44,6 +205,8 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
   const glow = useDerivedValue(() => (phone ? phone.value : 0));
 
   const legBack = shade(look.legs);
+  const headY = look.hair === 'hood' ? -148 : -149;
+  const headR = look.hair === 'hood' ? 10.5 : 13;
   return (
     <Group transform={tr} opacity={opacity}>
       <Group origin={vec(5, -62)} transform={legB}>
@@ -54,7 +217,11 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
       </Group>
       {look.hair === 'long' && <Path path={HAIR_LONG} color={look.hairColor ?? '#2B1B14'} />}
       {look.hair === 'hood' && <Path path={HOOD} color={shade(look.body)} />}
+      <RoundedRect x={-4.5} y={-142} width={9} height={10} r={3} color={shade(look.skin, 0.85)} />
       <Path path={TORSO} color={look.body} />
+      <Path path={TORSO_SHADE} color="rgba(4,10,30,0.16)">
+        <BlurMask blur={3} style="normal" />
+      </Path>
       {look.stripes && (
         <Path path="M-17 -102H17M-17 -86H17M-17 -70H17" style="stroke" strokeWidth={3} color="#7FA6D3" />
       )}
@@ -78,7 +245,8 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
           </Group>
         )}
       </Group>
-      <Circle cx={0} cy={look.hair === 'hood' ? -148 : -149} r={look.hair === 'hood' ? 10.5 : 13} color={look.skin} />
+      <Circle cx={0} cy={headY} r={headR} color={look.skin} />
+      <HeadShade cx={0} cy={headY} r={headR} />
       {look.hair === 'short' && <Path path={HAIR_SHORT} color={look.hairColor ?? '#20160F'} />}
       {look.hair === 'long' && (
         <Path path="M-13 -152Q-12 -165 0 -165Q13 -165 13 -152Q6 -158 0 -157Q-7 -157 -13 -152Z" color={look.hairColor ?? '#2B1B14'} />
@@ -89,14 +257,15 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
           <RoundedRect x={-2} y={-158} width={20} height={3} r={1} color="#0F1A33" />
         </>
       )}
+      <Face clock={clock} cx={0} cy={headY + 1} r={headR} skin={look.skin} mood={mood} seed={seed} brow={look.hairColor ?? '#20160F'} />
     </Group>
   );
 }
 
-type GirlProps = { clock: Num; x: Num; walk: Num; fear: Num };
+type GirlProps = { clock: Num; x: Num; walk: Num; fear: Num; mood: Mood };
 
 /** Valentina. Mira hacia la derecha. Origen en los pies. */
-export function Girl({ clock, x, walk, fear }: GirlProps) {
+export function Girl({ clock, x, walk, fear, mood }: GirlProps) {
   const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: 745 }, { scale: 1.25 }]);
   const swing = useDerivedValue(() => walk.value * Math.sin(clock.value * 11) * 0.38);
   const trembling = useDerivedValue(() => fear.value * Math.sin(clock.value * 60) * 0.04);
@@ -125,8 +294,11 @@ export function Girl({ clock, x, walk, fear }: GirlProps) {
         <Group origin={vec(1.5, -64)} transform={armFront}>
           <RoundedRect x={-1} y={-64} width={5} height={22} r={2.5} color="#EBB892" />
         </Group>
+        <RoundedRect x={-1.5} y={-71} width={7} height={5} r={2} color="#D9A47C" />
         <Circle cx={2} cy={-79} r={11} color="#EBB892" />
+        <HeadShade cx={2} cy={-79} r={11} side={-1} />
         <Path path="M-9 -79Q-10 -92 3 -92Q14 -92 13 -82Q8 -86 2 -85Q-3 -84 -4 -77Z" color="#2B1B14" />
+        <Face clock={clock} cx={2.5} cy={-78} r={11} skin="#EBB892" mood={mood} profile seed={0.4} />
         <Path path="M-17 -81a5 8 0 1 0 10 0a5 8 0 1 0 -10 0" color="#2B1B14" />
         <RoundedRect x={-9} y={-87} width={3} height={5} r={1} color="#E11D2A" />
       </Group>
