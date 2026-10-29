@@ -2,6 +2,7 @@ import React from 'react';
 import { Blur, BlurMask, Circle, Group, LinearGradient, Oval, Path, Rect, RoundedRect, vec } from '@shopify/react-native-skia';
 import type { Transforms3d } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import { PhoneRing } from './Figures';
 
 type Num = SharedValue<number>;
 
@@ -137,8 +138,10 @@ export function Drone({ clock, x, y, spot }: { clock: Num; x: Num; y: Num; spot:
   );
 }
 
-/** Moto de policía con su conductor. Mira a la derecha (o a la izquierda con `flip`). Origen en el piso. */
-export function Motorcycle({ clock, x, y, scale = 1, flip = false }: { clock: Num; x: Num; y: number; scale?: number; flip?: boolean }) {
+type MotoProps = { clock: Num; x: Num; y: number; scale?: number; flip?: boolean; ring?: Num };
+
+/** Moto de policía con su conductor. Mira a la derecha (o a la izquierda con `flip`). Origen en el piso. `ring`: suena el celular del manubrio. */
+export function Motorcycle({ clock, x, y, scale = 1, flip = false, ring }: MotoProps) {
   const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scaleX: flip ? -scale : scale }, { scaleY: scale }]);
   const red = useDerivedValue(() => (Math.floor(clock.value * 7) % 2 === 0 ? 1 : 0.15));
   const blue = useDerivedValue(() => 1.15 - red.value);
@@ -166,6 +169,14 @@ export function Motorcycle({ clock, x, y, scale = 1, flip = false }: { clock: Nu
       <RoundedRect x={-8} y={-106} width={14} height={6} r={2} color="#E0B341" />
       <Circle cx={-2} cy={-126} r={14} color="#F4F6FA" />
       <RoundedRect x={0} y={-131} width={14} height={8} r={3} color="#14233F" />
+      {/* Celular en el manubrio */}
+      <RoundedRect x={22} y={-96} width={12} height={18} r={2} color="#0B1631" />
+      {ring && (
+        <>
+          <RoundedRect x={23.5} y={-94} width={9} height={14} r={1.5} color="#FF5A64" opacity={ring} />
+          <PhoneRing clock={clock} cx={28} cy={-87} r={8} ring={ring} />
+        </>
+      )}
       {/* Sirena */}
       <Path path="M-44 -58V-94" style="stroke" strokeWidth={3} color="#9AA6B8" />
       <Group opacity={red}>

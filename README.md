@@ -5,7 +5,7 @@ Dos historias interactivas de unos 40 segundos cada una que muestran cómo funci
 1. **Camino a casa:** Valentina, 12 años, vuelve sola de noche y una camioneta se detiene a su lado.
 2. **Bus al colegio:** Mateo, 15 años, va en bus a su colegio y suben asaltantes con cuchillo y arma.
 
-Al terminar la historia 1, el cierre queda en **Únete** 15 segundos y empieza sola la historia 2.
+Al terminar la historia 1, el cierre queda en **Únete** 7 segundos y empieza sola la historia 2.
 
 Hecho con **Expo (React Native)**, **Skia** y **Reanimated**. El mismo código funciona en **web, iOS y Android**.
 
@@ -57,7 +57,7 @@ Las dos historias usan los mismos tiempos; cambian la escena y los textos.
 
 En el cierre, cada verbo usa el color de su momento en la historia: azul (detección), rojo (alerta) y verde (a salvo).
 
-En la parte inferior hay una línea de tiempo: toca cualquier momento para saltar ahí. El botón cambia según el momento: **Saltar**, **Ver historia 2** (sin esperar los 15 segundos) o **Ver de nuevo**.
+En la parte inferior hay una línea de tiempo: toca cualquier momento para saltar ahí. El botón cambia según el momento: **Saltar**, **Ver historia 2** (sin esperar los 7 segundos) o **Ver de nuevo**.
 
 ### Ver un momento exacto
 

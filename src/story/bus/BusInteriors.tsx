@@ -3,7 +3,7 @@ import { Blur, Circle, Group, LinearGradient, Path, Rect, RoundedRect, vec } fro
 import type { Transforms3d } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { CUTS, cutOpacity } from '../timeline';
-import { easeIn, easeOut, prog } from '../math';
+import { easeIn, easeOut, prog, win } from '../math';
 import { Adult, type Mood } from '../Figures';
 import { useInteriorCam } from '../Interiors';
 import { Motorcycle } from '../Vehicles';
@@ -27,6 +27,9 @@ function Shop({ clock, frame }: { clock: Num; frame: Frame }) {
   const worry = useDerivedValue(() => prog(lt.value, 0.2, 0.45));
   const focus = useDerivedValue(() => prog(lt.value, 0.8, 1.0));
   const mood: Mood = { worry, focus };
+  const ring = useDerivedValue(() => win(lt.value, 0.2, 1.1, 0.1));
+  // Levanta el celular por encima del mostrador para leer la alerta
+  const lift = useDerivedValue(() => 0.7 * win(lt.value, 0.12, 0.95, 0.15));
   return (
     <Group opacity={op} transform={tr}>
       <Rect x={-600} y={-600} width={2800} height={2200}>
@@ -54,7 +57,7 @@ function Shop({ clock, frame }: { clock: Num; frame: Frame }) {
         <Blur blur={12} />
       </Path>
       <Rect x={-600} y={860} width={2800} height={800} color="#2A2230" />
-      <Adult clock={clock} x={x} y={860} scale={2.7} walk={walk} phone={phone} mood={mood} seed={50}
+      <Adult clock={clock} x={x} y={860} scale={2.7} walk={walk} phone={phone} ring={ring} point={lift} mood={mood} seed={50}
         look={{ body: '#2F7D5B', legs: '#2C2F45', skin: '#C68E62', hair: 'long', hairColor: '#1A120C' }} />
       {/* Mostrador */}
       <Rect x={360} y={640} width={600} height={220} color="#6E5038" />
@@ -80,6 +83,7 @@ function Motos({ clock, frame }: { clock: Num; frame: Frame }) {
   const wash = useDerivedValue(() => (lt.value > 0.3 ? (Math.floor(lt.value * 7) % 2 === 0 ? 0.2 : 0.05) : 0));
   const washBlue = useDerivedValue(() => (lt.value > 0.3 ? 0.25 - wash.value : 0));
   const streaks = useDerivedValue(() => prog(lt.value, 0.8, 1.0));
+  const ring = useDerivedValue(() => win(lt.value, 0.1, 0.95, 0.1));
   return (
     <Group opacity={op} transform={tr}>
       <Rect x={-600} y={-600} width={2800} height={2200}>
@@ -100,8 +104,8 @@ function Motos({ clock, frame }: { clock: Num; frame: Frame }) {
           <RoundedRect key={k} x={-200 + k * 60} y={460 + k * 70} width={420} height={6} r={3} color="rgba(110,168,255,0.6)" />
         ))}
       </Group>
-      <Motorcycle clock={sirens} x={xB} y={790} scale={2.5} />
-      <Motorcycle clock={sirens} x={xA} y={860} scale={3.1} />
+      <Motorcycle clock={sirens} x={xB} y={790} scale={2.5} ring={ring} />
+      <Motorcycle clock={sirens} x={xA} y={860} scale={3.1} ring={ring} />
       <Rect x={-600} y={-600} width={2800} height={2200} color={C.sos} opacity={wash} />
       <Rect x={-600} y={-600} width={2800} height={2200} color={C.police} opacity={washBlue} />
     </Group>
@@ -122,6 +126,7 @@ function Kitchen({ clock, frame }: { clock: Num; frame: Frame }) {
   const door = useDerivedValue<Transforms3d>(() => [{ scaleX: 1 - 0.85 * easeOut(prog(lt.value, 0.45, 0.85)) }]);
   const panic = useDerivedValue(() => prog(lt.value, 0.1, 0.35));
   const mood: Mood = { fear: panic, worry: 1 };
+  const ring = useDerivedValue(() => win(lt.value, 0.1, 1.2, 0.1));
   return (
     <Group opacity={op} transform={tr}>
       <Rect x={-600} y={-600} width={2800} height={2200}>
@@ -155,9 +160,9 @@ function Kitchen({ clock, frame }: { clock: Num; frame: Frame }) {
         <Circle cx={1180} cy={600} r={9} color="#C9A35A" />
       </Group>
       <Rect x={-600} y={860} width={2800} height={800} color="#2A2440" />
-      <Adult clock={clock} x={momX} y={860} scale={2.7} walk={walk} phone={phone} mood={mood} seed={51}
+      <Adult clock={clock} x={momX} y={860} scale={2.7} walk={walk} phone={phone} ring={ring} mood={mood} seed={51}
         look={{ body: '#B4533C', legs: '#2C2F45', skin: '#D9A47C', hair: 'long', hairColor: '#2B1B14' }} />
-      <Adult clock={clock} x={dadX} y={860} scale={2.7} walk={walk} phone={phone} mood={mood} seed={52}
+      <Adult clock={clock} x={dadX} y={860} scale={2.7} walk={walk} phone={phone} ring={ring} mood={mood} seed={52}
         look={{ body: '#3F6E5A', legs: '#26365A', skin: '#C68E62', hair: 'short' }} />
       {/* Mesa del desayuno */}
       <RoundedRect x={520} y={690} width={420} height={16} r={6} color="#A07A55" />

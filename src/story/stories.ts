@@ -26,5 +26,9 @@ export const STORIES: StoryDef[] = [
   { title: 'Bus al colegio', stages: BUS_STAGES, cuts: BUS_CUTS, kf: BUS_KF, labels: BUS_LABELS, rain: false, Scene: BusScene, Interiors: BusInteriors },
 ];
 
-/** Segundos que el cierre queda en ÚNETE antes de pasar a la siguiente historia. */
-export const NEXT_STORY_DELAY = 15;
+/**
+ * Segundos que el cierre queda en ÚNETE antes de pasar a la siguiente historia.
+ * Como en la reproducción automática de Netflix o YouTube (5–10 s): sumado a los ~2 s que Únete ya
+ * lleva en pantalla, da tiempo de leer y tocar las tiendas sin que la espera se sienta larga.
+ */
+export const NEXT_STORY_DELAY = 7;

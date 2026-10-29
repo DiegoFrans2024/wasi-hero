@@ -30,7 +30,7 @@ function Label({ clock, cam, item }: { clock: Num; cam: SharedValue<Cam>; item: 
   );
 }
 
-/** Rótulo de cada corte: quién está recibiendo la alerta. Se suma a la lista y no se borra. */
+/** Rótulo de cada corte, con forma de notificación del celular: quién recibe la alerta. Se suma a la lista y no se borra. */
 function Chyron({ clock, cuts, i }: { clock: Num; cuts: Cut[]; i: number }) {
   const cut = cuts[i];
   const next = i < cuts.length - 1 ? cuts[i + 1].start : ALERT_LIST_END;
@@ -38,15 +38,23 @@ function Chyron({ clock, cuts, i }: { clock: Num; cuts: Cut[]; i: number }) {
     const t = clock.value;
     const o = prog(t, cut.start, cut.start + 0.25) * (1 - prog(t, ALERT_LIST_END - 0.4, ALERT_LIST_END));
     // El corte en pantalla va resaltado; los anteriores quedan un poco atenuados
-    return { opacity: o * (1 - 0.25 * prog(t, next, next + 0.3)), transform: [{ translateY: (1 - prog(t, cut.start, cut.start + 0.3)) * -10 }] };
+    // Llega como notificación: baja, y vibra medio segundo
+    const lt = t - cut.start;
+    const shake = lt > 0 && lt < 0.6 ? Math.sin(lt * 70) * 5 * (1 - lt / 0.6) : 0;
+    return {
+      opacity: o * (1 - 0.25 * prog(t, next, next + 0.3)),
+      transform: [{ translateY: (1 - prog(t, cut.start, cut.start + 0.3)) * -18 }, { translateX: shake }],
+    };
   });
   const b = useAnimatedStyle(() => ({ opacity: prog(clock.value, cut.start + cut.swap, cut.start + cut.swap + 0.25) }));
   return (
     <Animated.View style={[styles.chyron, { borderColor: cut.color }, box]}>
       <View style={styles.chyronHead}>
-        <View style={[styles.live, { backgroundColor: cut.color }]} />
-        <Text style={styles.chyronTitle}>{cut.title}</Text>
-        <Text style={styles.chyronTime}>Alerta Wasi</Text>
+        <View style={styles.appIcon}>
+          <Text style={styles.appIconText}>W</Text>
+        </View>
+        <Text style={styles.chyronTitle} numberOfLines={1}>{cut.title}</Text>
+        <Text style={styles.chyronTime}>Wasi · ahora</Text>
       </View>
       <Text style={styles.chyronText}>{cut.a}</Text>
       <Animated.Text style={[styles.chyronText, styles.chyronB, { color: cut.color }, b]}>{cut.b}</Animated.Text>
@@ -79,9 +87,10 @@ const styles = StyleSheet.create({
   chyrons: { position: 'absolute', gap: 8 },
   chyronsPort: { left: 16, right: 16, maxWidth: 380 },
   chyronsLand: { right: 24, width: 340 },
-  chyron: { backgroundColor: 'rgba(7,14,34,0.88)', borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  chyron: { backgroundColor: 'rgba(7,14,34,0.9)', borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
   chyronHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  live: { width: 8, height: 8, borderRadius: 4 },
+  appIcon: { width: 20, height: 20, borderRadius: 5, backgroundColor: C.sos, alignItems: 'center', justifyContent: 'center' },
+  appIconText: { color: '#fff', fontFamily: 'Unbounded_800ExtraBold', fontSize: 10, lineHeight: 12 },
   chyronTitle: { color: '#fff', fontFamily: FONT.bold, fontSize: 15, flex: 1 },
   chyronTime: { color: '#9FB0CC', fontFamily: FONT.semi, fontSize: 12 },
   chyronText: { color: '#C7D3E8', fontFamily: FONT.semi, fontSize: 15, lineHeight: 20 },

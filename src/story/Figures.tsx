@@ -168,6 +168,27 @@ export function Face({ clock, cx, cy, r, skin, mood = NO_MOOD, profile = false, 
   );
 }
 
+/** Celular sonando: ondas que salen del teléfono y marcas de vibración a los lados. `ring` va de 0 a 1. */
+export function PhoneRing({ clock, cx, cy, r, ring }: { clock: Num; cx: number; cy: number; r: number; ring: Num }) {
+  const w0 = useDerivedValue(() => (clock.value * 1.8) % 1);
+  const w1 = useDerivedValue(() => (clock.value * 1.8 + 0.5) % 1);
+  const r0 = useDerivedValue(() => r * (1 + 2.4 * w0.value));
+  const r1 = useDerivedValue(() => r * (1 + 2.4 * w1.value));
+  const o0 = useDerivedValue(() => ring.value * (1 - w0.value));
+  const o1 = useDerivedValue(() => ring.value * (1 - w1.value));
+  const buzz = useDerivedValue(() => ring.value * (Math.floor(clock.value * 12) % 2 === 0 ? 1 : 0.3));
+  const arc = (side: number, k: number) =>
+    `M${cx + side * r * k} ${cy - r * 0.45 * k}q${side * r * 0.35 * k} ${r * 0.45 * k} 0 ${r * 0.9 * k}`;
+  const marks = arc(-1, 1.4) + arc(-1, 1.95) + arc(1, 1.4) + arc(1, 1.95);
+  return (
+    <Group>
+      <Circle cx={cx} cy={cy} r={r0} style="stroke" strokeWidth={r * 0.2} color="#FF5A64" opacity={o0} />
+      <Circle cx={cx} cy={cy} r={r1} style="stroke" strokeWidth={r * 0.2} color="#FF5A64" opacity={o1} />
+      <Path path={marks} style="stroke" strokeWidth={r * 0.17} strokeCap="round" color="#FFFFFF" opacity={buzz} />
+    </Group>
+  );
+}
+
 /** Sombra lateral de la cabeza, para que tenga volumen. `side` 1 = derecha, -1 = izquierda. */
 function HeadShade({ cx, cy, r, side = 1 }: { cx: number; cy: number; r: number; side?: number }) {
   const clip = Skia.RRectXY(Skia.XYWHRect(cx - r, cy - r, 2 * r, 2 * r), r, r);
@@ -189,6 +210,7 @@ type AdultProps = {
   walk?: Num;    // 0 quieto, 1 caminando o corriendo
   armsUp?: Num;  // 0 brazos abajo, 1 manos arriba
   phone?: Num;   // brillo del celular en la mano (0..1)
+  ring?: Num;    // 0..1, el celular suena: pantalla roja, ondas y vibración
   opacity?: Num | number;
   mood?: Mood;
   seed?: number;
@@ -197,7 +219,7 @@ type AdultProps = {
 };
 
 /** Persona adulta en silueta ilustrada. Origen en los pies. */
-export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opacity = 1, mood, seed = 0, point, holding }: AdultProps) {
+export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, ring, opacity = 1, mood, seed = 0, point, holding }: AdultProps) {
   const tr = useDerivedValue<Transforms3d>(() => [{ translateX: x.value }, { translateY: y }, { scale }]);
   const swing = useDerivedValue(() => (walk ? walk.value : 0) * Math.sin(clock.value * 15) * 0.55);
   const legA = useDerivedValue<Transforms3d>(() => [{ rotate: swing.value }]);
@@ -266,6 +288,13 @@ export function Adult({ clock, x, y, look, scale = 1, walk, armsUp, phone, opaci
             </Circle>
             <RoundedRect x={18} y={-86} width={8} height={13} r={1.5} color="#EAF5FF" />
           </Group>
+        )}
+        {ring && (
+          <>
+            <RoundedRect x={18} y={-86} width={8} height={13} r={1.5} color="#FF5A64" opacity={ring} />
+            <RoundedRect x={19.5} y={-84} width={5} height={2.5} r={1} color="#FFFFFF" opacity={ring} />
+            <PhoneRing clock={clock} cx={22} cy={-79.5} r={8} ring={ring} />
+          </>
         )}
       </Group>
       <Circle cx={0} cy={headY} r={headR} color={look.skin} />

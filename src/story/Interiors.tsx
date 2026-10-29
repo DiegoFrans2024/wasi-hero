@@ -3,8 +3,8 @@ import { Blur, BlurMask, Circle, Group, LinearGradient, Oval, Path, Rect, Rounde
 import type { Transforms3d } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { CUTS, cutOpacity } from './timeline';
-import { easeIn, easeInOut, easeOut, mix, prog } from './math';
-import { Adult, Face, type Mood } from './Figures';
+import { easeIn, easeInOut, easeOut, mix, prog, win } from './math';
+import { Adult, Face, PhoneRing, type Mood } from './Figures';
 import { PoliceCar } from './Vehicles';
 import { C } from './theme';
 
@@ -45,6 +45,7 @@ function Apartment({ clock, frame }: { clock: Num; frame: Frame }) {
   const startle = useDerivedValue(() => prog(lt.value, 0.7, 0.85) * (1 - 0.5 * prog(lt.value, 1.2, 1.6)));
   const worry = useDerivedValue(() => prog(lt.value, 1.1, 1.4));
   const mood: Mood = { sleep, fear: startle, worry };
+  const phoneRing = useDerivedValue(() => win(lt.value, 0.2, 1.3, 0.1));
   const warm = useDerivedValue(() => lamp.value * 0.12);
 
   return (
@@ -97,6 +98,7 @@ function Apartment({ clock, frame }: { clock: Num; frame: Frame }) {
         </Circle>
         <RoundedRect x={95} y={596} width={100} height={26} r={6} color="#0B1631" />
         <RoundedRect x={100} y={599} width={90} height={20} r={4} color="#FF5A64" opacity={ring} />
+        <PhoneRing clock={clock} cx={145} cy={609} r={34} ring={phoneRing} />
       </Group>
       <Rect x={-600} y={-600} width={2800} height={2200} color="#FFD27A" opacity={warm} />
     </Group>
@@ -122,6 +124,7 @@ function Patrol({ clock, frame }: { clock: Num; frame: Frame }) {
   ]);
   const zero = useDerivedValue<number>(() => 0);
   const officerMood: Mood = { focus: 1 };
+  const tabletRing = useDerivedValue(() => win(lt.value, 0.15, 1.0, 0.1));
   return (
     <Group opacity={op} transform={tr}>
       <Rect x={-600} y={-600} width={2800} height={2200}>
@@ -153,6 +156,7 @@ function Patrol({ clock, frame }: { clock: Num; frame: Frame }) {
             <BlurMask blur={8} style="normal" />
           </Circle>
           <RoundedRect x={119} y={-92} width={10} height={8} r={1} color="#FF5A64" opacity={tablet} />
+          <PhoneRing clock={clock} cx={124} cy={-88} r={6} ring={tabletRing} />
         </Group>
       </Group>
       <Rect x={-600} y={-600} width={2800} height={2200} color={C.sos} opacity={wash} />
@@ -177,6 +181,7 @@ function Parents({ clock, frame }: { clock: Num; frame: Frame }) {
   const door = useDerivedValue<Transforms3d>(() => [{ scaleX: 1 - 0.85 * easeOut(prog(lt.value, 0.45, 0.85)) }]);
   const panic = useDerivedValue(() => prog(lt.value, 0.1, 0.35));
   const mood: Mood = { fear: panic, worry: 1 };
+  const ring = useDerivedValue(() => win(lt.value, 0.1, 1.2, 0.1));
   const scale = 2.7;
   return (
     <Group opacity={op} transform={tr}>
@@ -242,9 +247,9 @@ function Parents({ clock, frame }: { clock: Num; frame: Frame }) {
         <Circle cx={1180} cy={600} r={9} color="#C9A35A" />
       </Group>
       <RoundedRect x={1215} y={290} width={90} height={28} r={4} color="#16A34A" />
-      <Adult clock={clock} x={dadX} y={860} scale={scale} walk={walk} phone={phone} mood={mood} seed={8}
+      <Adult clock={clock} x={dadX} y={860} scale={scale} walk={walk} phone={phone} ring={ring} mood={mood} seed={8}
         look={{ body: '#556B8F', legs: '#26365A', skin: '#C68E62', hair: 'short' }} />
-      <Adult clock={clock} x={momX} y={860} scale={scale} walk={walk} phone={phone} mood={mood} seed={9}
+      <Adult clock={clock} x={momX} y={860} scale={scale} walk={walk} phone={phone} ring={ring} mood={mood} seed={9}
         look={{ body: '#C2414B', legs: '#2C2F45', skin: '#E2B08A', hair: 'long' }} />
     </Group>
   );
